@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # Redis para cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - petroleum-network
+
+  # RabbitMQ para mensageria
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    networks:
+      - petroleum-network
+
+  # API Node.js - Módulo de Sensores
+  sensors-api:
+    build:
+      context: ./sensors-api
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PYTHON_API_URL=http://events-api:5000
+    networks:
+      - petroleum-network
+
+  # API Python - Módulo de Eventos Críticos
+  events-api:
+    build:
+      context: ./events-api
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    depends_on:
+      - redis
+      - rabbitmq
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672/
+    networks:
+      - petroleum-network
+
+  # API PHP - Módulo de Logística
+  logistics-api:
+    build:
+      context: ./logistics-api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - rabbitmq
+      - redis
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=admin
+      - RABBITMQ_PASS=admin123
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - petroleum-network
+
+networks:
+  petroleum-network:
+    driver: bridge

@@ -1,0 +1,5 @@
+# events-api/requirements.txt
+Flask==2.3.2
+redis==4.5.4
+pika==1.3.1
+requests==2.30.0
